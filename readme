@@ -1,0 +1,20 @@
+# Ransomware Simulation Project
+
+This project is a simulated ransomware script for educational purposes only. It encrypts and decrypts specific files in the user's home directory.
+
+⚠️ **Disclaimer**: This project is strictly for educational purposes. Do not use it for malicious intent.
+
+## Features
+- Encrypts files with specific extensions in the user's home directory.
+- Provides both a GUI and CLI for decryption.
+- Creates a ransom note for simulated communication.
+
+## Requirements
+- Python 3.8+
+- Dependencies listed in `requirements.txt`
+
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ghost27-robot/ransomware_project.git
+   cd ransomware_project
