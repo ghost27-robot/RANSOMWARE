@@ -1,0 +1,6 @@
+pycryptodome
+pillow
+tk
+
+To generate this file automatically, you can run:
+pip freeze > requirements.txt
