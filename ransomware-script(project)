@@ -191,4 +191,4 @@ if _name_ == "_main_":
     if len(sys.argv) > 1:
         decrypt_files_cli()
     else:
-        main() 
+        main()
